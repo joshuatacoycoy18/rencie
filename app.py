@@ -1,85 +1,54 @@
 """
-Sound & Raindrop Monitor - OFFLINE version (USB cable, no internet needed)
+Sound & Raindrop Monitor - Raspberry Pi 4B version (GPIO, no Pico needed)
 
-The Raspberry Pi Pico reads the sensors and sends each reading through the
-USB cable to the computer running this program (Windows PC or Raspberry Pi).
-This program reads the USB port, serves a web page, and tells the Pico when
-to sound the buzzer.
+Wiring (use 3.3V, not 5V):
+  Sound sensor  DO -> GPIO17 (pin 11)   VCC -> 3V3 (pin 1)   GND -> GND (pin 6)
+  Rain sensor   DO -> GPIO27 (pin 13)   VCC -> 3V3 (pin 17)  GND -> GND (pin 9)
+  Buzzer        +  -> GPIO22 (pin 15)   -   -> GND (pin 14)
 
-Nothing is made up: until the Pico sends data, the page says
-"Waiting for sensor data".
-
-Run:   python app.py
-Open:  http://localhost:5000            (on the same computer)
-       http://<IP-shown-at-startup>:5000 (from another device on the same
-                                           Wi-Fi / hotspot)
+Run:   python3 app.py
+Open:  http://localhost:5000
        landing page = /     dashboard = /dashboard
-
-Important: close Thonny first - only one program can use the USB port.
-
-Optional environment variables:
-  SERIAL_PORT  e.g. COM5 or /dev/ttyACM0   (default: auto-detect)
-  HOST         default 0.0.0.0  (use 127.0.0.1 to allow only this computer)
-  PORT         default 5000
 """
-import json
 import os
 import socket
 import threading
 import time
 from collections import deque
 
-import serial
-from serial.tools import list_ports
 from flask import Flask, jsonify, render_template, request
+from gpiozero import Buzzer, DigitalInputDevice
 
 # ---------------- Settings ----------------
-SERIAL_PORT = os.environ.get("SERIAL_PORT")      # None = auto-detect
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "5000"))
-BAUD_RATE = 115200
 HISTORY_SIZE = 120            # readings kept for the charts
-SOUND_ALERT_PERCENT = 70      # buzzer beeps above this sound level
+SOUND_ALERT_PERCENT = 5       # buzzer beeps at/above this sound level (0-100)
 RAIN_THRESHOLD_PERCENT = 30   # wetness at/above this = "raining"
 OFFLINE_AFTER_SECONDS = 5     # no reading for this long = sensor offline
+
+# ---------------- Hardware ----------------
+sound_pin = DigitalInputDevice(17, pull_up=True)   # is_active = True when DO is LOW
+rain_pin = DigitalInputDevice(27, pull_up=True)
+buzzer = Buzzer(22)
 
 # ---------------- Shared state ----------------
 history = deque(maxlen=HISTORY_SIZE)
 state = {"buzzer_enabled": True, "buzzer_on": False, "last_seen": 0.0}
 lock = threading.Lock()
 
-app = Flask(__name__)
-
-
-def clamp_percent(value):
-    return max(0.0, min(100.0, float(value)))
+app = Flask(_name_)
 
 
 def get_local_ip():
-    """Best-effort local IP (works without internet; no data is sent)."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(("10.255.255.255", 1))   # UDP "connect" sends nothing
+        s.connect(("10.255.255.255", 1))
         return s.getsockname()[0]
     except OSError:
         return "127.0.0.1"
     finally:
         s.close()
-
-
-def find_pico_port():
-    """Return the USB serial port of the Pico (or None)."""
-    if SERIAL_PORT:
-        return SERIAL_PORT
-    ports = list(list_ports.comports())
-    for p in ports:                       # 0x2E8A = Raspberry Pi vendor ID
-        if p.vid == 0x2E8A:
-            return p.device
-    for p in ports:
-        text = (p.description or "") + " " + (p.manufacturer or "")
-        if any(k in text for k in ("MicroPython", "Pico", "USB Serial Device")):
-            return p.device
-    return None
 
 
 def handle_reading(sound, wetness):
@@ -98,46 +67,26 @@ def handle_reading(sound, wetness):
         return state["buzzer_on"]
 
 
-def serial_loop():
-    """Background thread: read lines from the Pico, answer with B1 / B0."""
-    last_msg = None
-
-    def say(msg):
-        nonlocal last_msg
-        if msg != last_msg:          # only print when something changes
-            print(msg, flush=True)
-            last_msg = msg
-
+def sensor_loop():
+    """Background thread: read the sensors, control the buzzer."""
     while True:
-        port = find_pico_port()
-        if not port:
-            say("Pico not found. Plug it in with the USB cable (and close Thonny).")
-            time.sleep(2)
-            continue
-        try:
-            with serial.Serial(port, BAUD_RATE, timeout=1, write_timeout=1) as ser:
-                ser.reset_input_buffer()      # drop stale data from before
-                say(f"Connected to Pico on {port}")
-                while True:
-                    raw = ser.readline()
-                    if not raw:
-                        continue
-                    try:
-                        data = json.loads(raw.decode("utf-8", "ignore").strip())
-                        sound = round(clamp_percent(data["sound"]), 1)
-                        wetness = round(clamp_percent(data["wetness"]), 1)
-                    except (ValueError, KeyError, TypeError):
-                        continue     # ignore any other text the Pico prints
-                    buzzer_on = handle_reading(sound, wetness)
-                    ser.write(b"B1\n" if buzzer_on else b"B0\n")
-        except PermissionError:
-            say(f"Permission denied on {port}. On Raspberry Pi run: "
-                "sudo usermod -aG dialout $USER   then reboot. "
-                "On Windows, close Thonny. Retrying...")
-            time.sleep(2)
-        except (serial.SerialException, OSError) as err:
-            say(f"Cannot use {port}: {err}. Is Thonny still open? Retrying...")
-            time.sleep(2)
+        # sound: how many times it detected in 100 samples (~0.1s) = 0-100
+        hits = 0
+        for _ in range(100):
+            if sound_pin.is_active:
+                hits += 1
+            time.sleep(0.001)
+        sound = float(hits)
+
+        # rain: digital only, so 100 when wet, 0 when dry
+        wetness = 100.0 if rain_pin.is_active else 0.0
+
+        if handle_reading(sound, wetness):
+            buzzer.on()
+        else:
+            buzzer.off()
+
+        time.sleep(0.4)
 
 
 @app.route("/")
@@ -173,11 +122,10 @@ def api_buzzer():
     return jsonify(ok=True, buzzer_enabled=state["buzzer_enabled"])
 
 
-if __name__ == "__main__":
-    threading.Thread(target=serial_loop, daemon=True).start()
+if _name_ == "_main_":
+    threading.Thread(target=sensor_loop, daemon=True).start()
     print(f"\nDashboard on this computer:  http://localhost:{PORT}/dashboard")
     if HOST == "0.0.0.0":
-        print(f"From another device (same Wi-Fi/hotspot): "
-              f"http://{get_local_ip()}:{PORT}/dashboard\n", flush=True)
-    # debug is off on purpose: the reloader would start the serial thread twice
+        print(f"From another device (same Wi-Fi): http://{get_local_ip()}:{PORT}/dashboard\n", flush=True)
+    # debug is off on purpose: the reloader would start the sensor thread twice
     app.run(host=HOST, port=PORT, debug=False, threaded=True)
