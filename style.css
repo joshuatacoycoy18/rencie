@@ -1,0 +1,174 @@
+/* Blue + red theme. Blue = normal, red = anything that needs attention. */
+:root {
+  --navy: #0a1f4d;
+  --navy-2: #12327a;
+  --blue: #1d4ed8;
+  --blue-light: #3b82f6;
+  --sky-top: #2563eb;
+  --sky-bottom: #9fc2ff;
+  --storm-top: #071a43;
+  --storm-bottom: #1e40a0;
+  --red: #e11d48;
+  --red-dark: #b4143a;
+  --bg: #edf2fb;
+  --card: #ffffff;
+  --ink: #0b1b3d;
+  --muted: #5b6b8c;
+  --line: #d6e0f2;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --body: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--body); line-height: 1.5;
+}
+
+/* ---------- header ---------- */
+.top { background: var(--navy); border-bottom: 4px solid var(--red); }
+.top-inner {
+  max-width: 1040px; margin: 0 auto; padding: 18px 20px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+h1 {
+  margin: 0; display: flex; align-items: center; gap: 12px;
+  font-family: var(--display); font-weight: 800; font-size: 1.5rem; letter-spacing: -0.01em; color: #fff;
+}
+.logo {                   /* a red raindrop */
+  width: 18px; height: 18px; background: var(--red); flex: none;
+  border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+}
+.top-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.home-link {
+  color: #fff; text-decoration: none; font-weight: 600; font-size: .9rem;
+  padding: 5px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35);
+}
+.home-link:hover { background: rgba(255,255,255,.12); }
+.home-link:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+.pill {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 999px;
+  padding: 4px 14px; font-size: .85rem; color: #dbe7ff;
+}
+
+main { max-width: 1040px; margin: 0 auto; padding: 22px 20px 40px; }
+
+.label { margin: 0; font-size: .95rem; font-weight: 600; opacity: .85; }
+.sub { margin: 4px 0 0; color: var(--muted); }
+
+/* ---------- hero row ---------- */
+.hero-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+/* the sky: the one memorable element */
+.sky {
+  position: relative; overflow: hidden; min-height: 290px;
+  border-radius: 24px; color: #fff;
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+  box-shadow: 0 10px 28px rgba(10, 31, 77, .18);
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.sky::before {            /* storm layer fades in over the clear sky */
+  content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 1s;
+  background: linear-gradient(180deg, var(--storm-top), var(--storm-bottom));
+}
+.sky.raining::before { opacity: 1; }
+.sky .sub { color: rgba(255,255,255,.85); }
+
+.sky-content { position: relative; z-index: 1; padding: 28px 28px 0; }
+.status {
+  margin: 4px 0 0; font-family: var(--display); font-weight: 800;
+  font-size: clamp(2.6rem, 8vw, 4.4rem); line-height: 1; letter-spacing: -0.02em;
+}
+
+/* red chip shown only while it is raining */
+.chip {
+  position: absolute; z-index: 1; top: 22px; right: 22px;
+  background: var(--red); color: #fff; font-weight: 700; font-size: .85rem;
+  padding: 5px 12px; border-radius: 999px;
+  opacity: 0; transform: translateY(-6px); transition: opacity .5s, transform .5s;
+}
+.sky.raining .chip { opacity: 1; transform: none; }
+
+/* rain drops */
+.drops { position: absolute; inset: 0; opacity: 0; transition: opacity 1s; pointer-events: none; }
+.sky.raining .drops { opacity: 1; }
+.drops i {
+  position: absolute; top: -40px; width: 2px; border-radius: 2px;
+  background: linear-gradient(180deg, transparent, #bcd6ff);
+  animation: fall linear infinite;
+}
+@keyframes fall { to { transform: translateY(400px); } }
+
+/* buzzer strip inside the sky */
+.buzzer-strip {
+  position: relative; z-index: 1; margin: 20px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: rgba(255,255,255,.92); border-radius: 14px; color: var(--ink);
+  transition: background .3s, color .3s;
+}
+.buzzer-strip.beeping { background: var(--red); color: #fff; }
+.buzzer-strip button { margin-left: auto; }
+.buzzer-strip.beeping button { background: #fff; color: var(--red-dark); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue-light); flex: none; }
+.dot.on { background: #fff; animation: pulse .6s ease-in-out infinite alternate; }
+.dot.off { background: transparent; border: 2px solid var(--muted); }
+@keyframes pulse { to { transform: scale(1.5); opacity: .5; } }
+
+button {
+  font: inherit; font-weight: 600; font-size: .9rem; cursor: pointer;
+  padding: 7px 16px; border: 0; border-radius: 10px;
+  background: var(--navy); color: #fff;
+}
+button:hover { background: var(--navy-2); }
+button:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+
+/* ---------- panels ---------- */
+.panel {
+  background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--blue);
+  border-radius: 14px; padding: 22px;
+  box-shadow: 0 6px 18px rgba(10, 31, 77, .07);
+}
+.panel h2 { margin: 0 0 12px; font-family: var(--display); font-weight: 700; font-size: 1.1rem; color: var(--navy); }
+
+.sound { display: flex; flex-direction: column; transition: border-top-color .3s; }
+.sound.loud { border-top-color: var(--red); }
+.big {
+  margin: 4px 0 0; font-family: var(--display); font-weight: 800; color: var(--navy);
+  font-size: clamp(3rem, 8vw, 4.6rem); line-height: 1; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; transition: color .3s;
+}
+.big small { font-size: .45em; font-weight: 700; color: var(--muted); margin-left: 4px; }
+.sound.loud .big { color: var(--red); }
+.sound.loud .sub { color: var(--red-dark); font-weight: 600; }
+
+/* equalizer */
+.eq { flex: 1; min-height: 90px; display: flex; align-items: flex-end; gap: 4px; margin: 18px 0 8px; }
+.eq span {
+  flex: 1; height: 4%; border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, var(--blue-light), var(--blue));
+  transition: height .45s ease, background .3s;
+}
+.eq span.hot { background: linear-gradient(180deg, #fb4a6d, var(--red-dark)); }
+
+/* ---------- charts ---------- */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.chart-box { position: relative; height: 240px; }
+.chart-box canvas { display: block; width: 100%; height: 100%; }
+.legend { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: .85rem; color: var(--muted); }
+.legend .sw { width: 16px; height: 4px; border-radius: 2px; }
+.legend .sw.dash { margin-left: 12px; background: repeating-linear-gradient(90deg, var(--red) 0 4px, transparent 4px 8px); }
+
+/* ---------- small screens ---------- */
+@media (max-width: 760px) {
+  .hero-row { grid-template-columns: 1fr; }
+  .charts { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drops i, .dot.on { animation: none; }
+  .eq span, .sky::before, .drops, .chip { transition: none; }
+}
+
+/* sensor offline or no data yet */
+main.offline .sky, main.offline .sound { opacity: .6; }
