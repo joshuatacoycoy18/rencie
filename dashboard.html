@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Environmental Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        
+        <div class="dash-header">
+            <h1><i class="fa-solid fa-leaf"></i> Environmental Monitor</h1>
+            <a href="/" class="btn-back"><i class="fa-solid fa-house"></i> Home</a>
+        </div>
+
+        <div class="grid">
+            <div class="card" id="soundCard">
+                <i class="fa-solid fa-volume-high"></i>
+                <h3>Sound Sensor</h3>
+                <p id="soundText">Quiet</p>
+            </div>
+            <div class="card" id="rainCard">
+                <i class="fa-solid fa-cloud-showers-heavy"></i>
+                <h3>Raindrop Sensor</h3>
+                <p id="rainText">Dry</p>
+            </div>
+            <div class="card" id="buzzerCard">
+                <i class="fa-solid fa-bell"></i>
+                <h3>Buzzer Alert</h3>
+                <p id="buzzerText">Inactive</p>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <canvas id="sensorChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('sensorChart').getContext('2d');
+        const sensorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Sound Detected', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', step: true, fill: true, borderWidth: 2 },
+                    { label: 'Rain Detected', data: [], borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', step: true, fill: true, borderWidth: 2 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { 
+                    y: { min: -0.1, max: 1.1, ticks: { stepSize: 1, color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                    x: { display: false } 
+                },
+                plugins: { 
+                    legend: { labels: { color: '#f8fafc', font: { family: 'Inter', size: 13 } } } 
+                },
+                animation: { duration: 0 }
+            }
+        });
+
+        let timeCounter = 0;
+
+        function updateDashboard() {
+            fetch('/get_sensors')
+                .then(res => res.json())
+                .then(data => {
+                    // Sound Card
+                    const soundCard = document.getElementById('soundCard');
+                    if (data.sound_detected) {
+                        soundCard.className = 'card active-sound';
+                        document.getElementById('soundText').innerText = 'SOUND DETECTED!';
+                    } else {
+                        soundCard.className = 'card';
+                        document.getElementById('soundText').innerText = 'Quiet';
+                    }
+
+                    // Rain Card
+                    const rainCard = document.getElementById('rainCard');
+                    if (data.rain_detected) {
+                        rainCard.className = 'card active-rain';
+                        document.getElementById('rainText').innerText = 'RAIN DETECTED!';
+                    } else {
+                        rainCard.className = 'card';
+                        document.getElementById('rainText').innerText = 'Dry';
+                    }
+
+                    // Buzzer Card
+                    const buzzerCard = document.getElementById('buzzerCard');
+                    if (data.buzzer_active) {
+                        buzzerCard.className = 'card active-buzzer';
+                        document.getElementById('buzzerText').innerText = 'ALERT ON';
+                    } else {
+                        buzzerCard.className = 'card';
+                        document.getElementById('buzzerText').innerText = 'Inactive';
+                    }
+
+                    // Update Chart
+                    timeCounter++;
+                    sensorChart.data.labels.push(timeCounter);
+                    
+                    // Kunin ang huling value sa history array
+                    const latestSound = data.sound_history[data.sound_history.length - 1];
+                    const latestRain = data.rain_history[data.rain_history.length - 1];
+                    
+                    sensorChart.data.datasets[0].data.push(latestSound);
+                    sensorChart.data.datasets[1].data.push(latestRain);
+
+                    if (sensorChart.data.labels.length > 30) {
+                        sensorChart.data.labels.shift();
+                        sensorChart.data.datasets[0].data.shift();
+                        sensorChart.data.datasets[1].data.shift();
+                    }
+                    sensorChart.update();
+                }).catch(e => console.error(e));
+        }
+
+        setInterval(updateDashboard, 1000);
+        updateDashboard();
+    </script>
+</body>
+</html>
