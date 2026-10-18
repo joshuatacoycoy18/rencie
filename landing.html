@@ -3,18 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome | Environmental Monitor</title>
+    <title>EcoSense | Welcome</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <!-- CSS Rain Animation -->
+    <div class="rain" id="rain"></div>
+
     <div class="hero">
-        <i class="fa-solid fa-satellite-dish hero-icon"></i>
-        <h1>EcoSense Monitor</h1>
-        <p>Advanced real-time monitoring system for sound levels and raindrop detection using Raspberry Pi and Python.</p>
-        <a href="/dashboard" class="btn-launch">
-            <i class="fa-solid fa-rocket"></i> Launch Dashboard
-        </a>
+        <div class="hero-content">
+            <i class="fa-solid fa-cloud-showers-heavy hero-icon"></i>
+            <h1>EcoSense Monitor</h1>
+            <p>Advanced real-time environmental tracking. Monitoring acoustic levels and precipitation using Raspberry Pi.</p>
+            <a href="/dashboard" class="btn-launch">
+                <i class="fa-solid fa-chart-line"></i> Launch Dashboard
+            </a>
+        </div>
     </div>
+
+    <script>
+        // Gumawa ng CSS raindrops para may animation
+        const rainContainer = document.getElementById('rain');
+        for (let i = 0; i < 50; i++) {
+            let drop = document.createElement('div');
+            drop.className = 'drop';
+            drop.style.left = Math.random() * 100 + 'vw';
+            drop.style.animationDuration = Math.random() * 0.5 + 0.5 + 's';
+            drop.style.animationDelay = Math.random() * 2 + 's';
+            drop.style.opacity = Math.random() * 0.5 + 0.1;
+            rainContainer.appendChild(drop);
+        }
+    </script>
 </body>
 </html>
