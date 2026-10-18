@@ -1,221 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard | Sound & Raindrop Monitor</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Environmental Sensor Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    :root { --bg: #050914; --card: #0f172a; --border: #1e293b; --cyan: #06b6d4; --red: #ef4444; --yellow: #f59e0b; --green: #10b981; --text: #f8fafc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 30px; }
+    .dashboard { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 2rem; color: var(--cyan); text-shadow: 0 0 15px rgba(6,182,212,0.5); }
+    .header p { color: #94a3b8; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 30px; text-align: center; transition: 0.3s; }
+    .card i { font-size: 3rem; color: #475569; margin-bottom: 15px; transition: 0.3s; }
+    .card h3 { color: #94a3b8; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+    .card p { font-size: 0.8rem; color: #64748b; margin-top: 5px; }
+
+    /* Active States */
+    .card.active-sound { border-color: var(--yellow); box-shadow: 0 0 30px rgba(245,158,11,0.2); }
+    .card.active-sound i { color: var(--yellow); text-shadow: 0 0 20px var(--yellow); }
+    
+    .card.active-rain { border-color: var(--cyan); box-shadow: 0 0 30px rgba(6,182,212,0.2); }
+    .card.active-rain i { color: var(--cyan); text-shadow: 0 0 20px var(--cyan); }
+
+    .card.active-buzzer { border-color: var(--red); box-shadow: 0 0 30px rgba(239,68,68,0.2); }
+    .card.active-buzzer i { color: var(--red); animation: shake 0.4s infinite; }
+    @keyframes shake { 25% { transform: rotate(10deg); } 75% { transform: rotate(-10deg); } }
+
+    .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; height: 350px; margin-top: 20px; }
+</style>
 </head>
 <body>
-  <header class="top">
-    <div class="top-inner">
-      <h1><span class="logo" aria-hidden="true"></span>Sound & Raindrop Monitor</h1>
-      <div class="top-right">
-        <span id="mode" class="pill">Connecting…</span>
-        <a class="home-link" href="/">Home</a>
-      </div>
+<div class="dashboard">
+    <div class="header">
+        <h1><i class="fa-solid fa-leaf"></i> Environmental Monitor</h1>
+        <p>Activity 5: Sound and Raindrop Sensors</p>
     </div>
-  </header>
 
-  <main>
-    <section class="hero-row">
-      <!-- The sky: changes with the rain sensor -->
-      <div class="sky" id="sky">
-        <div class="drops" id="drops" aria-hidden="true"></div>
-        <span class="chip">Rain detected</span>
-        <div class="sky-content">
-          <p class="label">Rain sensor</p>
-          <p class="status" id="rainStatus">--</p>
-          <p class="sub">Wetness <strong id="wetValue">--</strong>%</p>
+    <div class="grid">
+        <div class="card" id="soundCard">
+            <i class="fa-solid fa-volume-high"></i>
+            <h3>Sound Sensor</h3>
+            <p id="soundText">No Sound</p>
         </div>
-        <div class="buzzer-strip" id="buzzStrip">
-          <span class="dot" id="buzzDot"></span>
-          <span>Buzzer: <strong id="buzzerState">--</strong></span>
-          <button id="buzzerBtn" type="button">Mute buzzer</button>
+        <div class="card" id="rainCard">
+            <i class="fa-solid fa-cloud-showers-heavy"></i>
+            <h3>Raindrop Sensor</h3>
+            <p id="rainText">No Rain</p>
         </div>
-      </div>
+        <div class="card" id="buzzerCard">
+            <i class="fa-solid fa-bell"></i>
+            <h3>Buzzer Alert</h3>
+            <p id="buzzerText">Inactive</p>
+        </div>
+    </div>
 
-      <!-- Sound level with a live equalizer built from the last readings -->
-      <div class="panel sound">
-        <p class="label">Sound level</p>
-        <p class="big"><span id="soundValue">--</span><small>%</small></p>
-        <div class="eq" id="eq" aria-hidden="true"></div>
-        <p class="sub" id="soundNote">Waiting for data</p>
-      </div>
-    </section>
+    <div class="chart-box">
+        <canvas id="sensorChart"></canvas>
+    </div>
+</div>
 
-    <section class="charts">
-      <div class="panel">
-        <h2>Sound level over time</h2>
-        <div class="legend"><span class="sw" style="background:#1d4ed8"></span>Sound<span class="sw dash"></span>Buzzer limit</div>
-        <div class="chart-box"><canvas id="soundChart"></canvas></div>
-      </div>
-      <div class="panel">
-        <h2>Rain wetness over time</h2>
-        <div class="legend"><span class="sw" style="background:#0284c7"></span>Wetness<span class="sw dash"></span>Rain threshold</div>
-        <div class="chart-box"><canvas id="rainChart"></canvas></div>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    // ---------- build the falling drops once ----------
-    const dropsEl = document.getElementById("drops");
-    for (let i = 0; i < 45; i++) {
-      const d = document.createElement("i");
-      d.style.left = Math.random() * 100 + "%";
-      d.style.animationDuration = (0.7 + Math.random() * 0.8) + "s";
-      d.style.animationDelay = (-Math.random() * 1.5) + "s";
-      d.style.height = (14 + Math.random() * 18) + "px";
-      dropsEl.appendChild(d);
-    }
-
-    // ---------- build the equalizer bars once ----------
-    const EQ_BARS = 24;
-    const eqEl = document.getElementById("eq");
-    for (let i = 0; i < EQ_BARS; i++) eqEl.appendChild(document.createElement("span"));
-
-    // ---------- charts (drawn on <canvas>, no internet needed) ----------
-    const soundChart = { canvas: document.getElementById("soundChart"), color: "#1d4ed8", values: [], labels: [], limit: 70 };
-    const rainChart  = { canvas: document.getElementById("rainChart"),  color: "#0284c7", values: [], labels: [], limit: 30 };
-
-    function render(c) {
-      const cv = c.canvas, dpr = window.devicePixelRatio || 1;
-      const w = cv.clientWidth, h = cv.clientHeight;
-      if (!w || !h) return;
-      cv.width = w * dpr; cv.height = h * dpr;
-      const ctx = cv.getContext("2d");
-      ctx.scale(dpr, dpr);
-      const L = 40, R = 10, T = 10, B = 26, pw = w - L - R, ph = h - T - B;
-      const y = v => T + ph * (1 - v / 100);
-
-      ctx.font = "12px system-ui, sans-serif";
-      ctx.lineWidth = 1; ctx.strokeStyle = "#dbe4f3"; ctx.fillStyle = "#5b6b8c";
-      ctx.textAlign = "right"; ctx.textBaseline = "middle";
-      for (let v = 0; v <= 100; v += 25) {
-        ctx.beginPath(); ctx.moveTo(L, y(v)); ctx.lineTo(w - R, y(v)); ctx.stroke();
-        ctx.fillText(v + "%", L - 6, y(v));
-      }
-
-      const n = c.values.length;
-      if (!n) {
-        ctx.textAlign = "center";
-        ctx.fillText("No data yet", L + pw / 2, T + ph / 2);
-        return;
-      }
-      const x = i => n === 1 ? L + pw : L + pw * i / (n - 1);
-
-      // dashed limit line
-      ctx.setLineDash([6, 6]); ctx.strokeStyle = "#e11d48"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(L, y(c.limit)); ctx.lineTo(w - R, y(c.limit)); ctx.stroke();
-      ctx.setLineDash([]);
-
-      // filled area
-      ctx.beginPath(); ctx.moveTo(x(0), y(0));
-      c.values.forEach((v, i) => ctx.lineTo(x(i), y(v)));
-      ctx.lineTo(x(n - 1), y(0)); ctx.closePath();
-      ctx.fillStyle = c.color + "26"; ctx.fill();
-
-      // line
-      ctx.beginPath();
-      c.values.forEach((v, i) => i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v)));
-      ctx.strokeStyle = c.color; ctx.lineWidth = 2.5; ctx.lineJoin = "round"; ctx.stroke();
-
-      // red dots where the value is at or above the limit
-      ctx.fillStyle = "#e11d48";
-      c.values.forEach((v, i) => {
-        if (v >= c.limit) { ctx.beginPath(); ctx.arc(x(i), y(v), 3.5, 0, Math.PI * 2); ctx.fill(); }
-      });
-
-      // time labels
-      ctx.fillStyle = "#5b6b8c"; ctx.textBaseline = "top";
-      ctx.textAlign = "left";  ctx.fillText(c.labels[0], L, h - B + 8);
-      if (n > 1) { ctx.textAlign = "right"; ctx.fillText(c.labels[n - 1], w - R, h - B + 8); }
-    }
-
-    function setChart(c, labels, values, limit) {
-      c.labels = labels; c.values = values; if (limit !== undefined) c.limit = limit;
-      render(c);
-    }
-    window.addEventListener("resize", () => { render(soundChart); render(rainChart); });
-
-    let buzzerEnabled = true;
-
-    function soundNote(v, limit) {
-      if (v >= limit) return "Loud: above the buzzer limit";
-      if (v >= limit * 0.5) return "Moderate noise";
-      return "Quiet";
-    }
-
-    // nothing received from the sensors yet: show empty placeholders
-    function showWaiting(d) {
-      document.querySelector("main").classList.add("offline");
-      document.getElementById("mode").textContent = "Waiting for sensor data";
-      document.getElementById("soundValue").textContent = "--";
-      document.getElementById("soundNote").textContent = "Waiting for sensor data";
-      document.getElementById("wetValue").textContent = "--";
-      document.getElementById("rainStatus").textContent = "No data";
-      document.getElementById("sky").classList.remove("raining");
-      document.querySelector(".sound").classList.remove("loud");
-      document.getElementById("buzzStrip").classList.remove("beeping");
-      [...eqEl.children].forEach(bar => { bar.style.height = "4%"; bar.classList.remove("hot"); });
-      document.getElementById("buzzerState").textContent = d.buzzer_enabled ? "Standing by" : "Muted";
-      document.getElementById("buzzDot").className = "dot " + (d.buzzer_enabled ? "" : "off");
-      document.getElementById("buzzerBtn").textContent = d.buzzer_enabled ? "Mute buzzer" : "Unmute buzzer";
-      setChart(soundChart, [], []);
-      setChart(rainChart, [], []);
-    }
-
-    async function refresh() {
-      try {
-        const d = await (await fetch("/api/data")).json();
-        buzzerEnabled = d.buzzer_enabled;
-        if (!d.history.length) { showWaiting(d); return; }
-        const last = d.history[d.history.length - 1];
-
-        document.querySelector("main").classList.toggle("offline", !d.connected);
-        document.getElementById("mode").textContent = d.connected ? "Sensor connected" : "Sensor offline";
-        document.getElementById("soundValue").textContent = Math.round(last.sound);
-        document.getElementById("soundNote").textContent = soundNote(last.sound, d.sound_alert);
-        document.getElementById("wetValue").textContent = Math.round(last.wetness);
-        document.getElementById("rainStatus").textContent = last.raining ? "It's raining" : "Dry";
-        document.getElementById("sky").classList.toggle("raining", last.raining && d.connected);
-        document.querySelector(".sound").classList.toggle("loud", last.sound >= d.sound_alert && d.connected);
-
-        // equalizer from the latest readings
-        const recent = d.history.slice(-EQ_BARS).map(h => h.sound);
-        while (recent.length < EQ_BARS) recent.unshift(0);
-        [...eqEl.children].forEach((bar, i) => {
-          bar.style.height = Math.max(4, recent[i]) + "%";
-          bar.classList.toggle("hot", recent[i] >= d.sound_alert);
-        });
-
-        // buzzer
-        buzzerEnabled = d.buzzer_enabled;
-        const state = !d.buzzer_enabled ? "Muted" : d.buzzer_on ? "Beeping" : "Standing by";
-        document.getElementById("buzzerState").textContent = state;
-        document.getElementById("buzzStrip").classList.toggle("beeping", d.buzzer_on);
-        document.getElementById("buzzDot").className = "dot " + (!d.buzzer_enabled ? "off" : d.buzzer_on ? "on" : "");
-        document.getElementById("buzzerBtn").textContent = d.buzzer_enabled ? "Mute buzzer" : "Unmute buzzer";
-
-        // charts
-        const labels = d.history.map(h => h.time);
-        setChart(soundChart, labels, d.history.map(h => h.sound), d.sound_alert);
-        setChart(rainChart, labels, d.history.map(h => h.wetness), d.rain_threshold);
-      } catch (e) {
-        document.getElementById("mode").textContent = "Disconnected";
-        console.error(e);
-      }
-    }
-
-    document.getElementById("buzzerBtn").addEventListener("click", async () => {
-      await fetch("/api/buzzer", { method: "POST", headers: { "Content-Type": "application/json" },
-                                   body: JSON.stringify({ enabled: !buzzerEnabled }) });
-      refresh();
+<script>
+    // Initialize Chart.js
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+    const sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Sound (1=Yes, 0=No)', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.2)', step: true, fill: true },
+                { label: 'Rain (1=Yes, 0=No)', data: [], borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.2)', step: true, fill: true }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { min: -0.1, max: 1.1, ticks: { stepSize: 1, color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                      x: { display: false } },
+            plugins: { legend: { labels: { color: '#f8fafc' } } },
+            animation: { duration: 0 }
+        }
     });
 
-    refresh();
-    setInterval(refresh, 1000);
-  </script>
+    let timeCounter = 0;
+
+    function updateDashboard() {
+        fetch('/get_sensors')
+            .then(res => res.json())
+            .then(data => {
+                // Update Sound Card
+                const soundCard = document.getElementById('soundCard');
+                if (data.sound_detected) {
+                    soundCard.className = 'card active-sound';
+                    document.getElementById('soundText').innerText = 'SOUND DETECTED!';
+                } else {
+                    soundCard.className = 'card';
+                    document.getElementById('soundText').innerText = 'Quiet';
+                }
+
+                // Update Rain Card
+                const rainCard = document.getElementById('rainCard');
+                if (data.rain_detected) {
+                    rainCard.className = 'card active-rain';
+                    document.getElementById('rainText').innerText = 'RAIN DETECTED!';
+                } else {
+                    rainCard.className = 'card';
+                    document.getElementById('rainText').innerText = 'Dry';
+                }
+
+                // Update Buzzer Card
+                const buzzerCard = document.getElementById('buzzerCard');
+                if (data.buzzer_active) {
+                    buzzerCard.className = 'card active-buzzer';
+                    document.getElementById('buzzerText').innerText = 'ALERT ON';
+                } else {
+                    buzzerCard.className = 'card';
+                    document.getElementById('buzzerText').innerText = 'Inactive';
+                }
+
+                // Update Chart
+                timeCounter++;
+                sensorChart.data.labels.push(timeCounter);
+                
+                // Get the latest data from history arrays
+                const latestSound = data.sound_history[data.sound_history.length - 1] || 0;
+                const latestRain = data.rain_history[data.rain_history.length - 1] || 0;
+                
+                sensorChart.data.datasets[0].data.push(latestSound);
+                sensorChart.data.datasets[1].data.push(latestRain);
+
+                // Keep only last 30 points for visual clarity
+                if (sensorChart.data.labels.length > 30) {
+                    sensorChart.data.labels.shift();
+                    sensorChart.data.datasets[0].data.shift();
+                    sensorChart.data.datasets[1].data.shift();
+                }
+                sensorChart.update();
+            }).catch(e => console.error(e));
+    }
+
+    setInterval(updateDashboard, 1000);
+    updateDashboard();
+</script>
 </body>
 </html>
