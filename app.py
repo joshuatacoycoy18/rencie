@@ -3,7 +3,6 @@ import threading
 import time
 import random
 
-# Hardware Libraries
 try:
     import RPi.GPIO as GPIO
     HARDWARE_AVAILABLE = True
@@ -30,53 +29,50 @@ if HARDWARE_AVAILABLE:
 sensor_data = {
     "sound_detected": False,
     "rain_detected": False,
-    "sound_history": [],
-    "rain_history": [],
+    "sound_history": [0] * 20, # Initial empty data para may simula ang graph
+    "rain_history": [0] * 20,
     "buzzer_active": False
 }
 
 def read_sensors():
     while True:
         if HARDWARE_AVAILABLE:
-            # Usually, these sensors output LOW (0) when triggered
             sound_state = GPIO.input(SOUND_PIN) == GPIO.LOW
             rain_state = GPIO.input(RAIN_PIN) == GPIO.LOW
         else:
-            # MOCK DATA for testing without hardware
-            sound_state = random.random() > 0.8  # 20% chance may tunog
-            rain_state = random.random() > 0.9   # 10% chance may ulan
+            sound_state = random.random() > 0.8
+            rain_state = random.random() > 0.9
 
         sensor_data["sound_detected"] = sound_state
         sensor_data["rain_detected"] = rain_state
         
-        # Buzzer Logic (Additional Task): Tumunog kung may sound o rain
         if sound_state or rain_state:
             sensor_data["buzzer_active"] = True
-            if HARDWARE_AVAILABLE:
-                GPIO.output(BUZZER_PIN, True)
+            if HARDWARE_AVAILABLE: GPIO.output(BUZZER_PIN, True)
         else:
             sensor_data["buzzer_active"] = False
-            if HARDWARE_AVAILABLE:
-                GPIO.output(BUZZER_PIN, False)
+            if HARDWARE_AVAILABLE: GPIO.output(BUZZER_PIN, False)
 
-        # I-save sa history para sa graph (1 kung detected, 0 kung wala)
         sensor_data["sound_history"].append(1 if sound_state else 0)
         sensor_data["rain_history"].append(1 if rain_state else 0)
         
-        # Limitahan ang history para hindi bumigat
-        if len(sensor_data["sound_history"]) > 50:
+        if len(sensor_data["sound_history"]) > 40:
             sensor_data["sound_history"].pop(0)
             sensor_data["rain_history"].pop(0)
 
-        time.sleep(1) # Update every 1 second
+        time.sleep(1)
 
-# Start reading sensors in background
 thread = threading.Thread(target=read_sensors, daemon=True)
 thread.start()
 
+# --- ROUTES ---
 @app.route('/')
-def index():
-    return render_template('index.html')
+def landing():
+    return render_template('landing.html') # Welcome Page
+
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html') # Main Dashboard
 
 @app.route('/get_sensors')
 def get_sensors():
@@ -86,5 +82,4 @@ if __name__ == '__main__':
     try:
         app.run(host='0.0.0.0', port=5000, debug=False)
     finally:
-        if HARDWARE_AVAILABLE:
-            GPIO.cleanup()
+        if HARDWARE_AVAILABLE: GPIO.cleanup()
