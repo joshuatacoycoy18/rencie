@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | Environmental Monitor</title>
+    <title>Dashboard | EcoSense</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,24 +12,29 @@
     <div class="dashboard-container">
         
         <div class="dash-header">
-            <h1><i class="fa-solid fa-leaf"></i> Environmental Monitor</h1>
+            <h1><i class="fa-solid fa-leaf"></i> EcoSense Dashboard</h1>
             <a href="/" class="btn-back"><i class="fa-solid fa-house"></i> Home</a>
         </div>
 
         <div class="grid">
+            <!-- Sound Card -->
             <div class="card" id="soundCard">
                 <i class="fa-solid fa-volume-high"></i>
-                <h3>Sound Sensor</h3>
+                <h3>Acoustic Level</h3>
                 <p id="soundText">Quiet</p>
             </div>
+
+            <!-- Rain Card -->
             <div class="card" id="rainCard">
                 <i class="fa-solid fa-cloud-showers-heavy"></i>
-                <h3>Raindrop Sensor</h3>
+                <h3>Precipitation</h3>
                 <p id="rainText">Dry</p>
             </div>
+
+            <!-- Buzzer Card -->
             <div class="card" id="buzzerCard">
                 <i class="fa-solid fa-bell"></i>
-                <h3>Buzzer Alert</h3>
+                <h3>Alert System</h3>
                 <p id="buzzerText">Inactive</p>
             </div>
         </div>
@@ -40,26 +45,39 @@
     </div>
 
     <script>
+        // Setup Chart.js na may Eco-Tech theme
         const ctx = document.getElementById('sensorChart').getContext('2d');
+        
+        // Gradient para sa Sound (Yellow)
+        let gradientSound = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientSound.addColorStop(0, 'rgba(246, 211, 101, 0.4)');
+        gradientSound.addColorStop(1, 'rgba(246, 211, 101, 0)');
+        
+        // Gradient para sa Rain (Blue)
+        let gradientRain = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientRain.addColorStop(0, 'rgba(0, 242, 254, 0.4)');
+        gradientRain.addColorStop(1, 'rgba(0, 242, 254, 0)');
+
         const sensorChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: [],
                 datasets: [
-                    { label: 'Sound Detected', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', step: true, fill: true, borderWidth: 2 },
-                    { label: 'Rain Detected', data: [], borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', step: true, fill: true, borderWidth: 2 }
+                    { label: 'Sound Detected', data: [], borderColor: '#f6d365', backgroundColor: gradientSound, step: true, fill: true, borderWidth: 2, pointRadius: 0 },
+                    { label: 'Rain Detected', data: [], borderColor: '#00f2fe', backgroundColor: gradientRain, step: true, fill: true, borderWidth: 2, pointRadius: 0 }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 scales: { 
-                    y: { min: -0.1, max: 1.1, ticks: { stepSize: 1, color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                    y: { min: -0.1, max: 1.1, ticks: { stepSize: 1, color: '#64748b', font: { family: 'Space Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' } },
                     x: { display: false } 
                 },
                 plugins: { 
-                    legend: { labels: { color: '#f8fafc', font: { family: 'Inter', size: 13 } } } 
+                    legend: { labels: { color: '#e2e8f0', font: { family: 'Outfit', size: 14 } } } 
                 },
-                animation: { duration: 0 }
+                animation: { duration: 0 },
+                interaction: { mode: 'index', intersect: false }
             }
         });
 
@@ -69,41 +87,43 @@
             fetch('/get_sensors')
                 .then(res => res.json())
                 .then(data => {
-                    // Sound Card
+                    // Update Sound Card
                     const soundCard = document.getElementById('soundCard');
+                    const soundText = document.getElementById('soundText');
                     if (data.sound_detected) {
-                        soundCard.className = 'card active-sound';
-                        document.getElementById('soundText').innerText = 'SOUND DETECTED!';
+                        soundCard.className = 'card sound-active';
+                        soundText.innerText = 'SOUND DETECTED!';
                     } else {
                         soundCard.className = 'card';
-                        document.getElementById('soundText').innerText = 'Quiet';
+                        soundText.innerText = 'Quiet';
                     }
 
-                    // Rain Card
+                    // Update Rain Card
                     const rainCard = document.getElementById('rainCard');
+                    const rainText = document.getElementById('rainText');
                     if (data.rain_detected) {
-                        rainCard.className = 'card active-rain';
-                        document.getElementById('rainText').innerText = 'RAIN DETECTED!';
+                        rainCard.className = 'card rain-active';
+                        rainText.innerText = 'RAIN DETECTED!';
                     } else {
                         rainCard.className = 'card';
-                        document.getElementById('rainText').innerText = 'Dry';
+                        rainText.innerText = 'Dry';
                     }
 
-                    // Buzzer Card
+                    // Update Buzzer Card
                     const buzzerCard = document.getElementById('buzzerCard');
+                    const buzzerText = document.getElementById('buzzerText');
                     if (data.buzzer_active) {
-                        buzzerCard.className = 'card active-buzzer';
-                        document.getElementById('buzzerText').innerText = 'ALERT ON';
+                        buzzerCard.className = 'card buzzer-active';
+                        buzzerText.innerText = 'ALERT ACTIVE';
                     } else {
                         buzzerCard.className = 'card';
-                        document.getElementById('buzzerText').innerText = 'Inactive';
+                        buzzerText.innerText = 'Inactive';
                     }
 
                     // Update Chart
                     timeCounter++;
                     sensorChart.data.labels.push(timeCounter);
                     
-                    // Kunin ang huling value sa history array
                     const latestSound = data.sound_history[data.sound_history.length - 1];
                     const latestRain = data.rain_history[data.rain_history.length - 1];
                     
