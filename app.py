@@ -28,7 +28,7 @@ if HARDWARE_AVAILABLE:
     except Exception as e:
         print(f"[ERROR] Hardware init failed: {e}")
 
-# Global Data Structure (Naka-format na para sa iyong HTML)
+# Global Data Structure (Naka-format para sa HTML/Charts)
 sensor_data = {
     "connected": True,
     "sound_alert": 70,       # Threshold para sa Sound
@@ -39,10 +39,22 @@ sensor_data = {
 }
 
 def read_sensors():
+    last_sound_trigger = 0  # <--- ITO ANG FIX: Cooldown timer para sa Sound Sensor
+
     while True:
+        current_time = time.time()
+        
         if HARDWARE_AVAILABLE:
-            # Logic: LOW (0) kapag na-detect, HIGH (1) kapag wala
-            sound_state = GPIO.input(SOUND_PIN) == GPIO.LOW
+            # SOUND SENSOR: Basahin lang kung lumipas na ang 2 segundo mula sa huling trigger
+            # Para hindi marinig ang sariling tunog ng buzzer (Feedback Loop fix)
+            if current_time - last_sound_trigger > 2:
+                sound_state = GPIO.input(SOUND_PIN) == GPIO.LOW
+                if sound_state:
+                    last_sound_trigger = current_time  # I-update ang timer
+            else:
+                sound_state = False  # I-ignore ang sound habang nag-cooldown
+
+            # RAIN SENSOR: Walang cooldown dahil hindi naman ito naapektuhan ng buzzer
             rain_state = GPIO.input(RAIN_PIN) == GPIO.LOW
         else:
             # Mock Data para sa laptop
@@ -55,6 +67,7 @@ def read_sensors():
 
         # Buzzer Logic
         buzzer_should_beep = (sound_state or rain_state)
+        
         if sensor_data["buzzer_enabled"]:
             sensor_data["buzzer_on"] = buzzer_should_beep
             if HARDWARE_AVAILABLE:
@@ -72,7 +85,7 @@ def read_sensors():
             "raining": rain_state
         })
         
-        # Limitahan sa 50 entries para hindi bumigat
+        # Limitahan sa 50 entries para hindi bumigat ang browser
         if len(sensor_data["history"]) > 50:
             sensor_data["history"].pop(0)
 
@@ -91,7 +104,7 @@ def landing():
 def dashboard():
     return render_template('dashboard.html')
 
-# Ito ang endpoint na hinahanap ng HTML mo
+# Ito ang endpoint na hinahanap ng HTML mo para sa data
 @app.route('/api/data')
 def get_data():
     return jsonify(sensor_data)
