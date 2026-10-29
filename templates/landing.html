@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sound & Raindrop Monitor | EcoSense</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+</head>
+<body>
+  <header class="hero">
+    <div class="drops" id="drops" aria-hidden="true"></div>
+    <div class="wrap">
+      <nav class="nav">
+        <a class="brand" href="/"><span class="logo"></span> EcoSense</a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#hardware">Hardware</a>
+          <a class="btn btn-small" href="/dashboard">Open Dashboard</a>
+        </div>
+      </nav>
+
+      <div class="hero-grid">
+        <div class="hero-text">
+          <h1>Intelligent Rain & Noise Monitoring</h1>
+          <p class="lead">
+            A robust, offline-ready environmental monitoring system. Powered by a Raspberry Pi, 
+            the KY-037 sound sensor, and the HL-03 raindrop sensor.
+          </p>
+          <div class="cta-row">
+            <a class="btn" href="/dashboard">Launch Dashboard</a>
+            <a class="btn btn-ghost" href="#how">Explore System</a>
+          </div>
+        </div>
+
+        <aside class="status-card" id="statusCard" aria-live="polite">
+          <div class="status-head">
+            <h2>Live Telemetry</h2>
+            <span class="state wait" id="liveState">Connecting...</span>
+          </div>
+          <div class="metrics">
+            <div>
+              <p class="metric-label">Precipitation</p>
+              <p class="metric-value" id="liveRain">--</p>
+            </div>
+            <div>
+              <p class="metric-label">Acoustics</p>
+              <p class="metric-value" id="liveSound">--</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="section" id="features">
+      <div class="wrap split">
+        <div>
+          <h2>Advanced Environmental Tracking</h2>
+          <p class="section-lead">Designed to monitor micro-climates and noise pollution in real-time with zero latency.</p>
+        </div>
+        <div class="feature-list">
+          <div class="feature">
+            <span class="icon"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span>
+            <div>
+              <h3>Real-time Telemetry</h3>
+              <p>Continuous sampling of sound levels and moisture detection directly from the GPIO pins.</p>
+            </div>
+          </div>
+          <div class="feature">
+            <span class="icon"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 5-7"/></svg></span>
+            <div>
+              <h3>Dynamic Visualization</h3>
+              <p>Custom-built canvas charts render the historical data without relying on heavy external libraries.</p>
+            </div>
+          </div>
+          <div class="feature">
+            <span class="icon icon-red"><svg viewBox="0 0 24 24"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16zM10 21h4"/></svg></span>
+            <div>
+              <h3>Smart Alert System</h3>
+              <p>The buzzer triggers when wetness exceeds <strong><span class="js-rain-limit">30</span>%</strong> or noise exceeds <strong><span class="js-sound-limit">70</span>%</strong>.</p>
+            </div>
+          </div>
+          <div class="feature">
+            <span class="icon"><svg viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 4-2.4M22 8.8a15 15 0 0 0-8-3.7M5 12.9a10 10 0 0 1 3-2M19 12.9a10 10 0 0 0-3.7-2.3M8.5 16.4a5 5 0 0 1 7 0M12 20h.01M3 3l18 18"/></svg></span>
+            <div>
+              <h3>Offline Architecture</h3>
+              <p>Operates seamlessly over local network without requiring an active internet connection.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-tint" id="how">
+      <div class="wrap">
+        <h2>System Architecture</h2>
+        <p class="section-lead">From physical sensors to your web browser in milliseconds.</p>
+        <div class="table-wrap" style="margin-top: 40px; padding: 20px;">
+          <ol style="font-size: 1.1rem; color: var(--muted); line-height: 2;">
+            <li><strong>Sensory Input:</strong> The HL-03 and KY-037 detect physical changes in the environment.</li>
+            <li><strong>Microcontroller:</strong> Raspberry Pi processes digital signals and manages GPIO states.</li>
+            <li><strong>Flask Backend:</strong> Python serves the data via JSON API endpoints.</li>
+            <li><strong>Frontend:</strong> The browser renders the UI and Canvas charts in real-time.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="hardware">
+      <div class="wrap">
+        <h2>Hardware Wiring Guide</h2>
+        <p class="section-lead">Connect the components securely to the Raspberry Pi GPIO.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Component</th><th>Pi Pin</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sound Sensor (KY-037)</td>
+                <td><span class="pin">GPIO 17</span></td>
+                <td>Digital Output (DO) connected to Pin 11.</td>
+              </tr>
+              <tr>
+                <td>Raindrop Sensor (HL-03)</td>
+                <td><span class="pin">GPIO 27</span></td>
+                <td>Digital Output (DO) connected to Pin 13.</td>
+              </tr>
+              <tr>
+                <td>Active Buzzer</td>
+                <td><span class="pin pin-red">GPIO 23</span></td>
+                <td>Positive to Pin 16, Negative to Ground (Pin 20).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">EcoSense Monitoring System &copy; 2026. Powered by Raspberry Pi & Flask.</div>
+  </footer>
+
+  <script>
+    // Generate rain drops
+    const dropsEl = document.getElementById("drops");
+    for (let i = 0; i < 50; i++) {
+      const d = document.createElement("i");
+      d.style.left = Math.random() * 100 + "%";
+      d.style.animationDuration = (0.6 + Math.random() * 0.8) + "s";
+      d.style.animationDelay = (-Math.random() * 2) + "s";
+      d.style.height = (15 + Math.random() * 25) + "px";
+      dropsEl.appendChild(d);
+    }
+
+    // Fetch live data for the landing card
+    async function pull() {
+      const pill = document.getElementById("liveState");
+      const card = document.getElementById("statusCard");
+      try {
+        const d = await (await fetch("/api/data")).json();
+        document.querySelectorAll(".js-sound-limit").forEach(e => e.textContent = d.sound_alert);
+        document.querySelectorAll(".js-rain-limit").forEach(e => e.textContent = d.rain_threshold);
+
+        if (!d.history || !d.history.length) {
+          pill.textContent = "Awaiting Data"; pill.className = "state wait";
+          document.getElementById("liveRain").textContent = "--";
+          document.getElementById("liveSound").textContent = "--";
+          card.classList.remove("alert");
+          return;
+        }
+        const last = d.history[d.history.length - 1];
+        pill.textContent = d.connected ? "System Online" : "System Offline";
+        pill.className = "state " + (d.connected ? "ok" : "off");
+        document.getElementById("liveRain").textContent = last.raining ? "RAINING" : "DRY";
+        document.getElementById("liveSound").textContent = Math.round(last.sound) + "%";
+        card.classList.toggle("alert", d.connected && (last.raining || last.sound >= d.sound_alert));
+      } catch (e) {
+        pill.textContent = "Server Error"; pill.className = "state off";
+      }
+    }
+    pull();
+    setInterval(pull, 2000);
+  </script>
+</body>
+</html>

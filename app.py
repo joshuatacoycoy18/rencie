@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 import threading
 import time
 import random
+import math
 
 try:
     import RPi.GPIO as GPIO
@@ -38,13 +39,39 @@ sensor_data = {
     "history": []            # Dito natin i-save ang logs para sa charts
 }
 
+ESP32_TIMEOUT_SECONDS = 5
+state_lock = threading.Lock()
+esp32_reading = None
+last_esp32_update = None
+active_source = "pi"
+
 def read_sensors():
     last_sound_trigger = 0  # <--- ITO ANG FIX: Cooldown timer para sa Sound Sensor
 
     while True:
         current_time = time.time()
-        
-        if HARDWARE_AVAILABLE:
+
+        with state_lock:
+            source = active_source
+            reading = esp32_reading.copy() if esp32_reading else None
+            reading_age = (
+                time.monotonic() - last_esp32_update
+                if last_esp32_update is not None
+                else None
+            )
+
+        if source == "esp32":
+            connected = (
+                reading is not None
+                and reading_age is not None
+                and reading_age <= ESP32_TIMEOUT_SECONDS
+            )
+            sound_val = reading["sound"] if connected else 0
+            rain_val = reading["wetness"] if connected else 0
+            sound_state = sound_val >= sensor_data["sound_alert"]
+            rain_state = rain_val >= sensor_data["rain_threshold"]
+            sensor_data["connected"] = connected
+        elif HARDWARE_AVAILABLE:
             # SOUND SENSOR: Basahin lang kung lumipas na ang 2 segundo mula sa huling trigger
             # Para hindi marinig ang sariling tunog ng buzzer (Feedback Loop fix)
             if current_time - last_sound_trigger > 2:
@@ -61,9 +88,11 @@ def read_sensors():
             sound_state = random.random() > 0.8
             rain_state = random.random() > 0.9
 
-        # Convert natin sa percentage para gumana ang charts (100% kung detected, 0% kung wala)
-        sound_val = 100 if sound_state else 0
-        rain_val = 100 if rain_state else 0
+        if source != "esp32":
+            sensor_data["connected"] = True
+            # Convert natin sa percentage para gumana ang charts (100% kung detected, 0% kung wala)
+            sound_val = 100 if sound_state else 0
+            rain_val = 100 if rain_state else 0
 
         # Buzzer Logic
         buzzer_should_beep = (sound_state or rain_state)
@@ -77,17 +106,18 @@ def read_sensors():
             if HARDWARE_AVAILABLE:
                 GPIO.output(BUZZER_PIN, False)
 
-        # I-save sa history para sa charts
-        sensor_data["history"].append({
-            "time": time.strftime("%H:%M:%S"),
-            "sound": sound_val,
-            "wetness": rain_val,
-            "raining": rain_state
-        })
-        
-        # Limitahan sa 50 entries para hindi bumigat ang browser
-        if len(sensor_data["history"]) > 50:
-            sensor_data["history"].pop(0)
+        if source != "esp32" or sensor_data["connected"]:
+            # I-save sa history para sa charts
+            sensor_data["history"].append({
+                "time": time.strftime("%H:%M:%S"),
+                "sound": sound_val,
+                "wetness": rain_val,
+                "raining": rain_state
+            })
+
+            # Limitahan sa 50 entries para hindi bumigat ang browser
+            if len(sensor_data["history"]) > 50:
+                sensor_data["history"].pop(0)
 
         time.sleep(1)
 
@@ -108,6 +138,34 @@ def dashboard():
 @app.route('/api/data')
 def get_data():
     return jsonify(sensor_data)
+
+@app.route('/api/sensors', methods=['POST'])
+def receive_sensor_data():
+    global esp32_reading, last_esp32_update, active_source
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Expected a JSON object"}), 400
+
+    sound = data.get("sound")
+    wetness = data.get("wetness")
+    for name, value in (("sound", sound), ("wetness", wetness)):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not 0 <= value <= 100
+            or not math.isfinite(value)
+        ):
+            return jsonify({
+                "error": f"{name} must be a number from 0 to 100"
+            }), 400
+
+    with state_lock:
+        esp32_reading = {"sound": sound, "wetness": wetness}
+        last_esp32_update = time.monotonic()
+        active_source = "esp32"
+
+    return jsonify({"status": "received"}), 200
 
 # Ito ang endpoint para sa "Mute Alert" button mo
 @app.route('/api/buzzer', methods=['POST'])
